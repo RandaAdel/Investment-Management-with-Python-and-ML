@@ -1,5 +1,7 @@
 import pandas as pd 
+import numpy as np
 import scipy.stats
+from scipy.stats import norm 
 
 def drawdown(return_series: pd.Series):
     """
@@ -73,4 +75,42 @@ def kurtosis(r):
 def is_normal(r, level=0.01): 
     statistic, p_value = scipy.stats.jarque_bera(r)
     return p_value > level 
+
+def semideviation(r):
+    """
+    Returns the semi deviations of r
+    """
+    is_negative = r < 0
+    return r[is_negative].std(ddof=0)
+
+def var_historic(r, level=5):
+    """
+    VaR Historic 
+    """
+    if isinstance(r, pd.DataFrame):
+        print('Those values are reported as +ve numbers but remmber they are risk values!')
+        return r.aggregate(var_historic, level=level)
+    elif isinstance(r, pd.Series):
+
+        return -np.percentile(r, level)
+    else: 
+        raise TypeError("Expected R to be Series or a DataFrame!")
+    
+def var_gaussian(r, level=5, modified=False):
+    """
+    Compute how many std far from the mean this level of risk is using its z-score 
+    """
+    z = norm.ppf(level/100)
+    print('Those values are reported as +ve numbers but remmber they are risk values!')
+    if modified:
+        s=skewness(r)
+        k=kurtosis(r)
+
+        z = (z +
+            (z**2 - 1)*s/6 +
+            (z**3 - 3*z)*(k-3)/24 - 
+            (2*z**3 - 5*z)*(s**2)/36
+
+        )
+    return -(r.mean() + z*r.std(ddof=0))
 
